@@ -130,6 +130,30 @@ class AdminIngestionTest {
                         .body("roomTypes[0].ratePlans[0].board", is("BB"));
     }
 
+    @Test
+    void upsertingTheSameHotelTwiceSucceeds() {
+        // regressao: comparar Long por referencia fazia o segundo upsert devolver 404
+        given().header("X-Api-Key", ADMIN_KEY).contentType(ContentType.JSON)
+                        .body(hotelBody(902L))
+                        .when().put("/admin/hotels/901")
+                        .then().statusCode(200);
+
+        given().header("X-Api-Key", ADMIN_KEY).contentType(ContentType.JSON)
+                        .body(hotelBody(902L))
+                        .when().put("/admin/hotels/901")
+                        .then().statusCode(200)
+                        .body("roomTypes[0].id", is(902));
+    }
+
+    private static String hotelBody(final long roomId) {
+        return """
+                        {"name":"Hotel Idempotente","cityCode":"campinas","cityName":"Campinas",
+                         "roomTypes":[{"id":%d,"name":"Standard","maxAdults":2,"maxChildren":1,
+                                       "ratePlans":[{"id":%d,"name":"Café — flexível","board":"BB",
+                                                     "cancellationPolicy":"FLEXIBLE"}]}]}
+                        """.formatted(roomId, roomId + 1);
+    }
+
     private static void publishRates(final long roomTypeId, final long ratePlanId, final LocalDate from,
                     final LocalDate to, final String adult, final String child, final int expected) {
         given().header("X-Api-Key", ADMIN_KEY)

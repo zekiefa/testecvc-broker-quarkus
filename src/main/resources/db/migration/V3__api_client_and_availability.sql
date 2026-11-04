@@ -4,8 +4,8 @@ CREATE TABLE api_client
 (
     id                 BIGSERIAL PRIMARY KEY,
     name               TEXT      NOT NULL,
-    -- SHA-256 da chave: a chave em claro nunca e gravada nem devolvida
-    key_hash           CHAR(64)  NOT NULL,
+    -- SHA-256 da chave em hexadecimal: a chave em claro nunca e gravada nem devolvida
+    key_hash           TEXT      NOT NULL CHECK (char_length(key_hash) = 64),
     -- escopos separados por virgula: 'read' ou 'read,admin'
     scopes             TEXT      NOT NULL,
     enabled            BOOLEAN   NOT NULL DEFAULT TRUE,

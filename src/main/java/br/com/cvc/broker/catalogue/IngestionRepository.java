@@ -38,7 +38,7 @@ public class IngestionRepository {
                         .setParameter("lat", latitude)
                         .setParameter("lng", longitude)
                         .executeUpdate();
-        syncSequence("hotel");
+        syncHotelSequence();
     }
 
     public Long findHotelId(final long id) {
@@ -76,7 +76,7 @@ public class IngestionRepository {
                         .setParameter("maxAdults", maxAdults)
                         .setParameter("maxChildren", maxChildren)
                         .executeUpdate();
-        syncSequence("room_type");
+        syncRoomTypeSequence();
     }
 
     public void upsertPlan(final long id, final long roomTypeId, final String name, final String board,
@@ -93,13 +93,33 @@ public class IngestionRepository {
                         .setParameter("board", board)
                         .setParameter("policy", cancellationPolicy)
                         .executeUpdate();
-        syncSequence("rate_plan");
+        syncRatePlanSequence();
     }
 
-    private void syncSequence(final String table) {
+    /**
+     * Reposiciona a sequence depois de um insert com id explicito.
+     *
+     * <p>Um statement literal por tabela, de proposito: concatenar o nome da tabela no SQL
+     * vira superficie de injecao (e o analisador esta certo em reclamar).</p>
+     */
+    private void syncHotelSequence() {
         this.entityManager.createNativeQuery(
-                        "select setval(pg_get_serial_sequence('" + table + "', 'id'), "
-                                        + "greatest((select coalesce(max(id), 1) from " + table + "), 1))")
+                        "select setval(pg_get_serial_sequence('hotel', 'id'), "
+                                        + "greatest((select coalesce(max(id), 1) from hotel), 1))")
+                        .getSingleResult();
+    }
+
+    private void syncRoomTypeSequence() {
+        this.entityManager.createNativeQuery(
+                        "select setval(pg_get_serial_sequence('room_type', 'id'), "
+                                        + "greatest((select coalesce(max(id), 1) from room_type), 1))")
+                        .getSingleResult();
+    }
+
+    private void syncRatePlanSequence() {
+        this.entityManager.createNativeQuery(
+                        "select setval(pg_get_serial_sequence('rate_plan', 'id'), "
+                                        + "greatest((select coalesce(max(id), 1) from rate_plan), 1))")
                         .getSingleResult();
     }
 

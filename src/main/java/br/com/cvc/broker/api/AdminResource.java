@@ -56,7 +56,7 @@ public class AdminResource {
 
         for (final RoomUpsert roomBody : body.roomTypes()) {
             final Long owner = this.ingestion.findRoomHotelId(roomBody.id());
-            if (owner != null && owner != hotelId) {
+            if (owner != null && owner.longValue() != hotelId) {
                 throw new BrokerException("room-not-found", 404,
                                 "Room " + roomBody.id() + " does not belong to hotel " + hotelId);
             }
@@ -65,7 +65,7 @@ public class AdminResource {
 
             for (final PlanUpsert planBody : roomBody.ratePlans()) {
                 final Long roomId = this.ingestion.findPlanRoomId(planBody.id());
-                if (roomId != null && roomId != roomBody.id()) {
+                if (roomId != null && !roomId.equals(roomBody.id())) {
                     throw new BrokerException("rate-plan-not-found", 404,
                                     "Rate plan " + planBody.id() + " does not belong to room " + roomBody.id());
                 }
