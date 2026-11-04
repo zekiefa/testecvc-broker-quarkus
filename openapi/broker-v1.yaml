@@ -1,0 +1,642 @@
+openapi: 3.1.0
+
+info:
+  title: Broker de Hotéis — API v1
+  version: 1.0.0
+  summary: Catálogo, tarifas e disponibilidade de hotéis com frescor explícito.
+  description: |
+    API **B2B** que publica catálogo, tarifas e disponibilidade para um comprador (*buyer*)
+    cotar uma estadia sem inventar preço.
+
+    ## Regras que o contrato garante
+
+    1. **Frescor explícito** — toda resposta com tarifa devolve `updatedAt` e `staleAfter`.
+       O comprador decide se o dado ainda vale. Não existe tarifa sem data de atualização.
+    2. **Origem declarada** — `dataSource` diz se o dado foi semeado (`SEED`) ou publicado
+       por push (`PUSH`). Dado sintético nunca se disfarça de real.
+    3. **Tarifa é líquida (net)** — o broker publica o preço do hotel. Remuneração do
+       comprador (markup, comissão) não é assunto deste contrato.
+    4. **Noite faltando é erro** — cotar um período com qualquer noite sem tarifa devolve
+       `409 incomplete-rate-period`. Nunca um total silenciosamente errado.
+    5. **Versão por adição** — `/v1` só evolui de forma compatível. Campo novo é seguro;
+       remover ou mudar significado, não.
+
+    ## Escopo v1
+    Publica e cota. **Não** vende, não cobra, não reserva, não bloqueia estoque.
+  license:
+    name: Projeto de estudo
+    identifier: LicenseRef-Proprietary
+
+servers:
+  - url: http://localhost:8081
+    description: Desenvolvimento local
+  - url: https://broker.testecvc.example
+    description: Produção (fictício)
+
+tags:
+  - name: Buyer
+    description: Consumo pelo serviço de reservas (escopo `read`)
+  - name: Admin
+    description: Publicação de catálogo, tarifas e disponibilidade (escopo `admin`)
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /v1/hotels:
+    get:
+      tags: [Buyer]
+      operationId: listHotels
+      summary: Lista hotéis por cidade
+      parameters:
+        - $ref: '#/components/parameters/CityCode'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Página de hotéis
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HotelPage'
+              example:
+                items:
+                  - id: 1
+                    name: Hotel Serra Verde
+                    cityCode: 'serra-negra'
+                    cityName: Serra Negra
+                    dataSource: SEED
+                    updatedAt: '2026-11-03T12:00:00Z'
+                page: { limit: 20, offset: 0, total: 1 }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /v1/hotels/{hotelId}:
+    get:
+      tags: [Buyer]
+      operationId: getHotel
+      summary: Detalhe do hotel com quartos e regimes
+      parameters:
+        - $ref: '#/components/parameters/HotelId'
+      responses:
+        '200':
+          description: Detalhe
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HotelDetail'
+              example:
+                id: 1
+                name: Hotel Serra Verde
+                cityCode: 'serra-negra'
+                cityName: Serra Negra
+                latitude: -22.6119
+                longitude: -46.7019
+                dataSource: SEED
+                updatedAt: '2026-11-03T12:00:00Z'
+                roomTypes:
+                  - id: 1
+                    name: Standard Casal + Infantil
+                    maxAdults: 2
+                    maxChildren: 2
+                    ratePlans:
+                      - id: 1
+                        name: Café da manhã — flexível
+                        board: BB
+                        cancellationPolicy: FLEXIBLE
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /v1/availability:
+    get:
+      tags: [Buyer]
+      operationId: getAvailability
+      summary: Disponibilidade publicada por noite
+      description: |
+        Disponibilidade **publicada**, não reservada. O broker não bloqueia estoque no v1:
+        o campo é informativo e não garante venda (ver risco R4 na arquitetura).
+      parameters:
+        - name: roomTypeId
+          in: query
+          required: true
+          schema: { type: integer, format: int64, minimum: 1 }
+        - $ref: '#/components/parameters/CheckIn'
+        - $ref: '#/components/parameters/CheckOut'
+      responses:
+        '200':
+          description: Disponibilidade por noite
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityResponse'
+              example:
+                roomTypeId: 1
+                checkIn: '2027-04-10'
+                checkOut: '2027-04-13'
+                minAllotment: 2
+                nights:
+                  - { date: '2027-04-10', allotment: 3, stopSell: false }
+                  - { date: '2027-04-11', allotment: 2, stopSell: false }
+                  - { date: '2027-04-12', allotment: 5, stopSell: false }
+                updatedAt: '2026-11-03T12:00:00Z'
+                staleAfter: '2026-11-03T12:15:00Z'
+                dataSource: SEED
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /v1/quotes:
+    post:
+      tags: [Buyer]
+      operationId: createQuote
+      summary: Cota uma estadia (soma das diárias do período)
+      description: |
+        Lê a tarifa de **todas** as noites do período e devolve o detalhamento por noite.
+        Se qualquer noite não tiver tarifa publicada, responde `409 incomplete-rate-period`
+        — o comprador nunca recebe um total que não fecha com as diárias.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuoteRequest'
+            example:
+              hotelId: 1
+              roomTypeId: 1
+              ratePlanId: 1
+              checkIn: '2027-04-10'
+              checkOut: '2027-04-13'
+              adults: 1
+              children: 1
+      responses:
+        '200':
+          description: Cotação
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteResponse'
+              example:
+                hotelId: 1
+                roomTypeId: 1
+                ratePlanId: 1
+                checkIn: '2027-04-10'
+                checkOut: '2027-04-13'
+                adults: 1
+                children: 1
+                currency: BRL
+                totalAmount: 4050.00
+                nights:
+                  - { date: '2027-04-10', adult: 900.00, child: 450.00 }
+                  - { date: '2027-04-11', adult: 900.00, child: 450.00 }
+                  - { date: '2027-04-12', adult: 900.00, child: 450.00 }
+                updatedAt: '2026-11-03T12:00:00Z'
+                staleAfter: '2026-11-03T12:15:00Z'
+                dataSource: SEED
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /admin/hotels/{hotelId}:
+    put:
+      tags: [Admin]
+      operationId: upsertHotel
+      summary: Cria ou atualiza o catálogo de um hotel
+      description: Requer escopo `admin`. Idempotente por `hotelId`.
+      parameters:
+        - $ref: '#/components/parameters/HotelId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HotelUpsert'
+      responses:
+        '200':
+          description: Hotel criado ou atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HotelDetail'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/rooms/{roomTypeId}/rates:
+    put:
+      tags: [Admin]
+      operationId: publishRates
+      summary: Publica tarifas de um quarto por intervalo de datas
+      description: |
+        Upsert por `stay_date`. Reprocessar o mesmo intervalo é seguro.
+        Cada noite publicada atualiza `updatedAt`, que alimenta `staleAfter` na cotação.
+      parameters:
+        - $ref: '#/components/parameters/RoomTypeId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RateUpsertBatch'
+            example:
+              ratePlanId: 1
+              currency: BRL
+              from: '2027-04-01'
+              to: '2027-04-30'
+              adultAmount: 900.00
+              childAmount: 450.00
+      responses:
+        '204': { description: Tarifas publicadas }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /admin/rooms/{roomTypeId}/availability:
+    put:
+      tags: [Admin]
+      operationId: publishAvailability
+      summary: Publica allotment e stop-sell por intervalo
+      parameters:
+        - $ref: '#/components/parameters/RoomTypeId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AvailabilityUpsertBatch'
+            example:
+              from: '2027-04-01'
+              to: '2027-04-30'
+              allotment: 3
+              stopSell: false
+      responses:
+        '204': { description: Disponibilidade publicada }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: |
+        Chave por *buyer*, guardada como hash. O escopo (`read` ou `admin`) vem do cadastro,
+        nunca do header. Ausente ou inválida → `401 unauthorized` (sem revelar se a chave existe).
+
+  parameters:
+    HotelId:
+      name: hotelId
+      in: path
+      required: true
+      schema: { type: integer, format: int64, minimum: 1 }
+    RoomTypeId:
+      name: roomTypeId
+      in: path
+      required: true
+      schema: { type: integer, format: int64, minimum: 1 }
+    CityCode:
+      name: cityCode
+      in: query
+      required: false
+      description: Slug da cidade (por exemplo, `serra-negra`). Sem filtro, lista todas.
+      schema: { type: string, maxLength: 64 }
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    Offset:
+      name: offset
+      in: query
+      required: false
+      schema: { type: integer, minimum: 0, default: 0 }
+    CheckIn:
+      name: checkIn
+      in: query
+      required: true
+      schema: { type: string, format: date }
+      example: '2027-04-10'
+    CheckOut:
+      name: checkOut
+      in: query
+      required: true
+      description: Exclusivo. Precisa ser posterior a `checkIn`.
+      schema: { type: string, format: date }
+      example: '2027-04-13'
+
+  headers:
+    RequestId:
+      description: Id de correlação da requisição (eco do `X-Request-Id` enviado ou gerado).
+      schema: { type: string }
+    RateLimitRemaining:
+      description: Requisições restantes na janela atual.
+      schema: { type: integer }
+    RetryAfter:
+      description: Segundos até a próxima tentativa.
+      schema: { type: integer }
+
+  responses:
+    BadRequest:
+      description: |
+        Entrada inválida. `type` distingue `validation-failed` (campo ausente/fora de faixa)
+        de `invalid-period` (`checkOut` não posterior a `checkIn`).
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/RequestId' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example:
+            type: https://broker.testecvc.example/problems/invalid-period
+            title: Bad Request
+            status: 400
+            detail: 'checkOut must be after checkIn'
+            instance: /v1/quotes
+            traceId: 3f0c1a9e-8a7d-4b5e-9b05-1c6f2f7a2d31
+    Unauthorized:
+      description: '`type: unauthorized` — chave ausente, inválida ou desabilitada.'
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/RequestId' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Forbidden:
+      description: '`type: insufficient-scope` — a chave não tem o escopo exigido (`admin`).'
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    NotFound:
+      description: '`type`: `hotel-not-found`, `room-not-found` ou `rate-plan-not-found`.'
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/RequestId' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Conflict:
+      description: |
+        `type: incomplete-rate-period` — alguma noite do período não tem tarifa publicada.
+        A resposta lista as datas faltantes para o comprador corrigir a chamada.
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/RequestId' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemWithMissingDates' }
+          example:
+            type: https://broker.testecvc.example/problems/incomplete-rate-period
+            title: Conflict
+            status: 409
+            detail: 'No rate published for 1 night(s) in the period'
+            instance: /v1/quotes
+            traceId: 3f0c1a9e-8a7d-4b5e-9b05-1c6f2f7a2d31
+            missingDates: ['2027-04-12']
+    TooManyRequests:
+      description: '`type: rate-limited` — excedeu o limite da chave.'
+      headers:
+        X-Request-Id: { $ref: '#/components/headers/RequestId' }
+        RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+        Retry-After: { $ref: '#/components/headers/RetryAfter' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+
+  schemas:
+    Problem:
+      type: object
+      description: RFC 7807 — mesmo formato do serviço de reservas.
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri, description: URI estável que identifica a classe do problema. }
+        title: { type: string, description: Motivo HTTP, para humano. }
+        status: { type: integer, minimum: 100, maximum: 599 }
+        detail: { type: string, description: Explicação desta ocorrência. }
+        instance: { type: string, format: uri-reference, description: Caminho da requisição. }
+        traceId: { type: string, description: Mesmo id do header X-Request-Id; permite achar a linha de log. }
+
+    ProblemWithMissingDates:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          properties:
+            missingDates:
+              type: array
+              description: Datas de estadia sem tarifa publicada (ISO-8601).
+              items: { type: string, format: date }
+
+    DataSource:
+      type: string
+      description: |
+        `SEED` = catálogo semeado (dado sintético, declarado);
+        `PUSH` = publicado por endpoint de admin.
+      enum: [SEED, PUSH]
+
+    Page:
+      type: object
+      required: [limit, offset, total]
+      properties:
+        limit: { type: integer }
+        offset: { type: integer }
+        total: { type: integer, description: Total de itens que casam com o filtro. }
+
+    HotelSummary:
+      type: object
+      required: [id, name, cityCode, cityName, dataSource, updatedAt]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        cityCode: { type: string }
+        cityName: { type: string }
+        dataSource: { $ref: '#/components/schemas/DataSource' }
+        updatedAt: { type: string, format: date-time }
+
+    HotelPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/HotelSummary' }
+        page: { $ref: '#/components/schemas/Page' }
+
+    HotelDetail:
+      type: object
+      required: [id, name, cityCode, cityName, dataSource, updatedAt, roomTypes]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        cityCode: { type: string }
+        cityName: { type: string }
+        latitude: { type: number, format: double }
+        longitude: { type: number, format: double }
+        dataSource: { $ref: '#/components/schemas/DataSource' }
+        updatedAt: { type: string, format: date-time }
+        roomTypes:
+          type: array
+          items: { $ref: '#/components/schemas/RoomType' }
+
+    RoomType:
+      type: object
+      required: [id, name, maxAdults, maxChildren, ratePlans]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        maxAdults: { type: integer, minimum: 1 }
+        maxChildren: { type: integer, minimum: 0 }
+        ratePlans:
+          type: array
+          items: { $ref: '#/components/schemas/RatePlan' }
+
+    RatePlan:
+      type: object
+      required: [id, name, board, cancellationPolicy]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        board:
+          type: string
+          enum: [RO, BB, HB, FB]
+          description: RO=só quarto, BB=café, HB=meia pensão, FB=pensão completa.
+        cancellationPolicy:
+          type: string
+          enum: [FLEXIBLE, NON_REFUNDABLE]
+
+    NightAvailability:
+      type: object
+      required: [date, allotment, stopSell]
+      properties:
+        date: { type: string, format: date }
+        allotment: { type: integer, minimum: 0 }
+        stopSell: { type: boolean }
+
+    AvailabilityResponse:
+      type: object
+      required: [roomTypeId, checkIn, checkOut, minAllotment, nights, updatedAt, staleAfter, dataSource]
+      properties:
+        roomTypeId: { type: integer, format: int64 }
+        checkIn: { type: string, format: date }
+        checkOut: { type: string, format: date }
+        minAllotment:
+          type: integer
+          description: Menor allotment do período — é quanto pode ser vendido para as noites todas.
+        nights:
+          type: array
+          items: { $ref: '#/components/schemas/NightAvailability' }
+        updatedAt: { type: string, format: date-time, description: Quando o dado foi publicado. }
+        staleAfter:
+          type: string
+          format: date-time
+          description: A partir daqui o dado deve ser considerado vencido pelo comprador.
+        dataSource: { $ref: '#/components/schemas/DataSource' }
+
+    QuoteRequest:
+      type: object
+      required: [hotelId, roomTypeId, ratePlanId, checkIn, checkOut, adults, children]
+      properties:
+        hotelId: { type: integer, format: int64, minimum: 1 }
+        roomTypeId: { type: integer, format: int64, minimum: 1 }
+        ratePlanId: { type: integer, format: int64, minimum: 1 }
+        checkIn: { type: string, format: date }
+        checkOut: { type: string, format: date, description: Exclusivo; precisa ser posterior a `checkIn`. }
+        adults: { type: integer, minimum: 1 }
+        children: { type: integer, minimum: 0, maximum: 10 }
+
+    NightRate:
+      type: object
+      required: [date, adult, child]
+      properties:
+        date: { type: string, format: date }
+        adult: { type: number, description: Tarifa líquida por adulto nesta noite. }
+        child: { type: number, description: Tarifa líquida por criança nesta noite. }
+
+    QuoteResponse:
+      type: object
+      required: [hotelId, roomTypeId, ratePlanId, checkIn, checkOut, adults, children, currency, totalAmount, nights, updatedAt, staleAfter, dataSource]
+      properties:
+        hotelId: { type: integer, format: int64 }
+        roomTypeId: { type: integer, format: int64 }
+        ratePlanId: { type: integer, format: int64 }
+        checkIn: { type: string, format: date }
+        checkOut: { type: string, format: date }
+        adults: { type: integer }
+        children: { type: integer }
+        currency: { type: string, pattern: '^[A-Z]{3}$' }
+        totalAmount:
+          type: number
+          description: |
+            Soma das diárias do período — **valor líquido do hotel**.
+            Markup ou comissão do comprador não fazem parte deste número.
+        nights:
+          type: array
+          items: { $ref: '#/components/schemas/NightRate' }
+        updatedAt: { type: string, format: date-time }
+        staleAfter: { type: string, format: date-time }
+        dataSource: { $ref: '#/components/schemas/DataSource' }
+
+    HotelUpsert:
+      type: object
+      required: [name, cityCode, cityName, roomTypes]
+      properties:
+        name: { type: string, maxLength: 200 }
+        cityCode: { type: string, maxLength: 64 }
+        cityName: { type: string, maxLength: 120 }
+        latitude: { type: number, format: double }
+        longitude: { type: number, format: double }
+        roomTypes:
+          type: array
+          items:
+            type: object
+            required: [id, name, maxAdults, maxChildren, ratePlans]
+            properties:
+              id: { type: integer, format: int64 }
+              name: { type: string }
+              maxAdults: { type: integer, minimum: 1 }
+              maxChildren: { type: integer, minimum: 0 }
+              ratePlans:
+                type: array
+                items:
+                  type: object
+                  required: [id, name, board, cancellationPolicy]
+                  properties:
+                    id: { type: integer, format: int64 }
+                    name: { type: string }
+                    board: { type: string, enum: [RO, BB, HB, FB] }
+                    cancellationPolicy: { type: string, enum: [FLEXIBLE, NON_REFUNDABLE] }
+
+    RateUpsertBatch:
+      type: object
+      required: [ratePlanId, currency, from, to, adultAmount, childAmount]
+      description: Publica a mesma tarifa para todas as datas do intervalo (inclusive).
+      properties:
+        ratePlanId: { type: integer, format: int64 }
+        currency: { type: string, pattern: '^[A-Z]{3}$' }
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        adultAmount: { type: number, minimum: 0 }
+        childAmount: { type: number, minimum: 0 }
+
+    AvailabilityUpsertBatch:
+      type: object
+      required: [from, to, allotment, stopSell]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        allotment: { type: integer, minimum: 0 }
+        stopSell: { type: boolean }

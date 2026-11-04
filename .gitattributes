@@ -1,0 +1,5 @@
+# Normaliza EOL (mesma licao do repo de reservas): evita diff inteiro por CRLF
+* text=auto eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
