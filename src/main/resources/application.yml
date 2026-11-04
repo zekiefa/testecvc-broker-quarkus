@@ -21,12 +21,7 @@ mp:
       disable: true
 
 broker:
-  # Chaves de desenvolvimento (MB2 move para o banco, com hash).
-  api-keys:
-    read:
-      key: ${BROKER_READ_KEY:read-key-dev}
-    admin:
-      key: ${BROKER_ADMIN_KEY:admin-key-dev}
+  # As chaves vivem em api_client (hash SHA-256), semeadas em V4 para desenvolvimento.
   rates:
     # A partir daqui o comprador deve considerar o dado vencido.
     freshness-minutes: 15

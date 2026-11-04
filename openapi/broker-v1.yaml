@@ -123,6 +123,9 @@ paths:
       description: |
         Disponibilidade **publicada**, não reservada. O broker não bloqueia estoque no v1:
         o campo é informativo e não garante venda (ver risco R4 na arquitetura).
+
+        Noite **não publicada** retorna `allotment: 0` com `stopSell: true` — o que não foi
+        publicado não pode ser vendido. Silêncio não é estoque.
       parameters:
         - name: roomTypeId
           in: query
@@ -300,8 +303,9 @@ components:
       in: header
       name: X-Api-Key
       description: |
-        Chave por *buyer*, guardada como hash. O escopo (`read` ou `admin`) vem do cadastro,
-        nunca do header. Ausente ou inválida → `401 unauthorized` (sem revelar se a chave existe).
+        Chave por *buyer*. O banco guarda apenas o **SHA-256** da chave; o escopo (`read` ou
+        `admin`) vem do cadastro, nunca do header. Ausente ou inválida → `401 unauthorized`
+        (sem revelar se a chave existe).
 
   parameters:
     HotelId:

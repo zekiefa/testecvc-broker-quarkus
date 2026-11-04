@@ -36,7 +36,7 @@ class CatalogueTest {
     @Test
     void paginates() {
         given().header("X-Api-Key", READ_KEY)
-                        .when().get("/v1/hotels?limit=3&offset=6")
+                        .when().get("/v1/hotels?cityCode=serra-negra&limit=3&offset=6")
                         .then().statusCode(200)
                         .body("items.size()", is(3))
                         .body("page.total", is(10))
