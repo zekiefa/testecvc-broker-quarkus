@@ -1,0 +1,21 @@
+quarkus:
+  application:
+    name: testecvc-broker
+  smallrye-openapi:
+    path: /q/openapi
+  http:
+    port: 8081
+
+# O contrato estatico (openapi/broker-v1.yaml) e a fonte; nada e gerado por anotacao.
+mp:
+  openapi:
+    scan:
+      disable: true
+
+broker:
+  # Chaves de desenvolvimento (MB2 move para o banco, com hash).
+  api-keys:
+    read:
+      key: ${BROKER_READ_KEY:read-key-dev}
+    admin:
+      key: ${BROKER_ADMIN_KEY:admin-key-dev}
