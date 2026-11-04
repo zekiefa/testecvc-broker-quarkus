@@ -48,6 +48,19 @@ npx --yes @redocly/cli lint openapi/broker-v1.yaml
 | **MB3** | integração com o serviço de reservas (substituir a fixture) |
 | **MB4** | alocador (`hold`/`bookings`) — só com sinal |
 
+## Como este repositório é gerenciado
+
+- **Tracker:** as tarefas deste projeto vivem no Beads do repositório irmão
+  ([`testecvc-quarkus`](https://github.com/zekiefa/testecvc-quarkus)), sob o épico `tcq-ptp`.
+  Este repositório **não** tem `.beads` próprio, de propósito: dois quadros viram dois lugares
+  para esquecer uma tarefa.
+- **Consumidor do contrato:** o serviço de reservas. Mudança incompatível em `/v1` exige
+  atualização lá também (`docs/arquitetura.md`, §3.5, e o `BrokerCatalog`).
+- **Fonte da verdade:** aqui, o contrato e a arquitetura do broker; no outro repositório, a
+  decisão de construí-lo e o consumidor.
+- **Sessão de trabalho:** os dois repositórios são gerenciados pela mesma sessão; a raiz do
+  workspace é o repositório de reservas, então **escritas aqui exigem aprovação de acesso amplo**.
+
 ## Licença
 
 Projeto de estudo, sem licença definida.
