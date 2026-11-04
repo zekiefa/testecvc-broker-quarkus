@@ -1,6 +1,7 @@
 package br.com.cvc.broker.exceptions;
 
 import java.net.URI;
+import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.ws.rs.core.MediaType;
@@ -14,18 +15,26 @@ import org.slf4j.MDC;
  * nao contra a mensagem.</p>
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public record ProblemDetail(URI type, String title, int status, String detail, URI instance, String traceId) {
+public record ProblemDetail(URI type, String title, int status, String detail, URI instance, String traceId,
+                List<String> missingDates) {
 
     public static final String MEDIA_TYPE = "application/problem+json";
     public static final String PROBLEM_TYPE_BASE = "https://broker.testecvc.example/problems/";
 
     public static ProblemDetail of(final int status, final String detail, final URI instance) {
-        return new ProblemDetail(URI.create("about:blank"), reasonOf(status), status, detail, instance, currentTraceId());
+        return new ProblemDetail(URI.create("about:blank"), reasonOf(status), status, detail, instance, currentTraceId(), null);
     }
 
     public static ProblemDetail typed(final String slug, final int status, final String detail, final URI instance) {
         return new ProblemDetail(URI.create(PROBLEM_TYPE_BASE + slug), reasonOf(status), status, detail, instance,
-                        currentTraceId());
+                        currentTraceId(), null);
+    }
+
+    /** 409 de periodo incompleto: além do problema, quais datas faltam. */
+    public static ProblemDetail typedWithMissingDates(final String slug, final int status, final String detail,
+                    final URI instance, final List<String> missingDates) {
+        return new ProblemDetail(URI.create(PROBLEM_TYPE_BASE + slug), reasonOf(status), status, detail, instance,
+                        currentTraceId(), missingDates);
     }
 
     public Response toResponse() {

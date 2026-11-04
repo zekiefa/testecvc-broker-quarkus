@@ -26,18 +26,12 @@ public final class PendingResources {
 
     @Path("/v1")
     @Produces(MediaType.APPLICATION_JSON)
-    public static class AvailabilityAndQuotes {
+    public static class Availability {
 
         @GET
         @Path("/availability")
         public Response availability() {
             return pending("GET /v1/availability");
-        }
-
-        @POST
-        @Path("/quotes")
-        public Response quotes() {
-            return pending("POST /v1/quotes");
         }
     }
 

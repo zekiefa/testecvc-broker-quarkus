@@ -5,6 +5,14 @@ quarkus:
     path: /q/openapi
   http:
     port: 8081
+  datasource:
+    devservices:
+      image-name: postgres:16-alpine
+  hibernate-orm:
+    schema-management:
+      strategy: none
+  flyway:
+    migrate-at-start: true
 
 # O contrato estatico (openapi/broker-v1.yaml) e a fonte; nada e gerado por anotacao.
 mp:
@@ -19,3 +27,7 @@ broker:
       key: ${BROKER_READ_KEY:read-key-dev}
     admin:
       key: ${BROKER_ADMIN_KEY:admin-key-dev}
+  rates:
+    # A partir daqui o comprador deve considerar o dado vencido.
+    freshness-minutes: 15
+    max-nights: 30

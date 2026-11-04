@@ -37,7 +37,8 @@ class ApiKeyFilterTest {
                         .when().get("/v1/hotels")
                         .then().statusCode(200)
                         .body("page.limit", is(20))
-                        .body("page.total", is(0));
+                        .body("page.total", is(10))
+                        .body("items[0].dataSource", is("SEED"));
     }
 
     @Test
