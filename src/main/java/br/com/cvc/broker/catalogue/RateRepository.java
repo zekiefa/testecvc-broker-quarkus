@@ -27,6 +27,26 @@ public class RateRepository {
                     Instant updatedAt) {
     }
 
+    /** Upsert do intervalo (inclusive), renovando {@code updated_at}: e isso que move o frescor. */
+    public int publish(final long roomTypeId, final long ratePlanId, final LocalDate from, final LocalDate to,
+                    final BigDecimal adultAmount, final BigDecimal childAmount, final String currency) {
+        return this.entityManager.createNativeQuery(
+                        "insert into rate (room_type_id, rate_plan_id, stay_date, adult_amount, child_amount, currency, updated_at) "
+                                        + "select :roomTypeId, :ratePlanId, d::date, :adult, :child, :currency, now() "
+                                        + "from generate_series(:from, :to, interval '1 day') d "
+                                        + "on conflict (room_type_id, rate_plan_id, stay_date) do update "
+                                        + "set adult_amount = excluded.adult_amount, child_amount = excluded.child_amount, "
+                                        + "currency = excluded.currency, updated_at = now()")
+                        .setParameter("roomTypeId", roomTypeId)
+                        .setParameter("ratePlanId", ratePlanId)
+                        .setParameter("from", from)
+                        .setParameter("to", to)
+                        .setParameter("adult", adultAmount)
+                        .setParameter("child", childAmount)
+                        .setParameter("currency", currency)
+                        .executeUpdate();
+    }
+
     public List<NightRateRow> find(final long roomTypeId, final long ratePlanId,
                     final LocalDate checkIn, final LocalDate checkOut) {
         final TypedQuery<Object[]> query = this.entityManager.createQuery(

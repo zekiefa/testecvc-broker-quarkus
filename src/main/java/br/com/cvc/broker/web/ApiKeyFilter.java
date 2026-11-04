@@ -3,7 +3,7 @@ package br.com.cvc.broker.web;
 import java.util.Locale;
 import java.util.Set;
 
-import br.com.cvc.broker.config.ApiKeyRegistry;
+import br.com.cvc.broker.identity.ApiKeyRegistry;
 import br.com.cvc.broker.exceptions.ProblemDetail;
 import jakarta.annotation.Priority;
 import jakarta.ws.rs.Priorities;

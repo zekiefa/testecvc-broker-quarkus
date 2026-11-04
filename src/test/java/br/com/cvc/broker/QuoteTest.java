@@ -56,8 +56,8 @@ class QuoteTest {
 
     @Test
     void periodWithoutPublishedRateIsConflict() {
-        // a janela semeada cobre 400 dias a partir de hoje
-        final var checkIn = LocalDate.now().plusDays(500);
+        // longe da janela semeada (400 dias) e de qualquer publicacao dos testes
+        final var checkIn = LocalDate.now().plusDays(900);
 
         final var response = given().header("X-Api-Key", READ_KEY)
                         .contentType(ContentType.JSON)

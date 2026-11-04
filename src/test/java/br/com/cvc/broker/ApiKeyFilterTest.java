@@ -6,6 +6,7 @@ import static org.hamcrest.Matchers.is;
 
 import org.junit.jupiter.api.Test;
 import io.quarkus.test.junit.QuarkusTest;
+import io.restassured.http.ContentType;
 
 /** Autenticacao por API key e autorizacao por prefixo de caminho. */
 @QuarkusTest
@@ -34,7 +35,7 @@ class ApiKeyFilterTest {
     @Test
     void readKeyCanReadTheCatalogue() {
         given().header("X-Api-Key", READ_KEY)
-                        .when().get("/v1/hotels")
+                        .when().get("/v1/hotels?cityCode=serra-negra")
                         .then().statusCode(200)
                         .body("page.limit", is(20))
                         .body("page.total", is(10))
@@ -50,11 +51,17 @@ class ApiKeyFilterTest {
     }
 
     @Test
-    void adminKeyReachesThePendingAdminRoute() {
+    void adminKeyReachesTheAdminRoutes() {
+        final var from = java.time.LocalDate.now().plusDays(800);
+
         given().header("X-Api-Key", ADMIN_KEY)
+                        .contentType(ContentType.JSON)
+                        .body("""
+                                        {"ratePlanId":1,"currency":"BRL","from":"%s","to":"%s",
+                                         "adultAmount":700.00,"childAmount":350.00}
+                                        """.formatted(from, from.plusDays(1)))
                         .when().put("/admin/rooms/1/rates")
-                        .then().statusCode(501)
-                        .body("type", containsString("/not-implemented"));
+                        .then().statusCode(204);
     }
 
     @Test
