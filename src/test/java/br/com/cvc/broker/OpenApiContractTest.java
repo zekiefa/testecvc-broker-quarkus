@@ -19,7 +19,7 @@ class OpenApiContractTest {
                         .then().statusCode(200)
                         .extract().asString();
 
-        for (final var path : new String[] { "/v1/hotels", "/v1/quotes", "/v1/availability",
+        for (final var path : new String[] { "/v1/hotels", "/v1/search", "/v1/quotes", "/v1/availability",
                         "/admin/hotels/{hotelId}", "/admin/rooms/{roomTypeId}/rates" }) {
             if (!body.contains(path)) {
                 throw new AssertionError("contrato servido nao contem " + path);

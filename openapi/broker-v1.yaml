@@ -160,6 +160,70 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
 
+  /v1/search:
+    get:
+      tags: [Buyer]
+      operationId: searchHotels
+      summary: Busca hotéis por destino com o melhor preço do período
+      description: |
+        Um item por hotel, com o **plano mais barato** do período. Existe para o comprador não
+        precisar fazer N+1 (uma chamada por hotel e outra por quarto/plano): a agregação é do
+        broker.
+
+        Período com qualquer noite sem tarifa publicada **não entra** no resultado — é melhor
+        não oferecer do que oferecer preço parcial.
+      parameters:
+        - name: cityCode
+          in: query
+          required: true
+          schema: { type: string, maxLength: 64 }
+          example: serra-negra
+        - $ref: '#/components/parameters/CheckIn'
+        - $ref: '#/components/parameters/CheckOut'
+        - name: adults
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: children
+          in: query
+          required: true
+          schema: { type: integer, minimum: 0, maximum: 10 }
+      responses:
+        '200':
+          description: Hotéis com o melhor preço do período, do mais barato ao mais caro
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+              example:
+                cityCode: serra-negra
+                checkIn: '2027-04-10'
+                checkOut: '2027-04-13'
+                adults: 1
+                children: 1
+                items:
+                  - hotelId: 3
+                    hotelName: Estância Alto da Serra
+                    cityCode: serra-negra
+                    cityName: Serra Negra
+                    roomTypeId: 5
+                    roomTypeName: Standard Casal
+                    ratePlanId: 9
+                    ratePlanName: Somente quarto — não reembolsável
+                    board: RO
+                    cancellationPolicy: NON_REFUNDABLE
+                    totalAmount: 3735.00
+                    currency: BRL
+                    updatedAt: '2026-11-03T12:00:00Z'
+                    staleAfter: '2026-11-03T12:15:00Z'
+                    dataSource: SEED
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
   /v1/quotes:
     post:
       tags: [Buyer]
@@ -590,6 +654,42 @@ components:
         nights:
           type: array
           items: { $ref: '#/components/schemas/NightRate' }
+        updatedAt: { type: string, format: date-time }
+        staleAfter: { type: string, format: date-time }
+        dataSource: { $ref: '#/components/schemas/DataSource' }
+
+    SearchResponse:
+      type: object
+      required: [cityCode, checkIn, checkOut, adults, children, items]
+      properties:
+        cityCode: { type: string }
+        checkIn: { type: string, format: date }
+        checkOut: { type: string, format: date }
+        adults: { type: integer }
+        children: { type: integer }
+        items:
+          type: array
+          description: Um item por hotel (o plano mais barato do período), ordenado por preço.
+          items: { $ref: '#/components/schemas/SearchHit' }
+
+    SearchHit:
+      type: object
+      required: [hotelId, hotelName, roomTypeId, ratePlanId, totalAmount, currency, updatedAt, staleAfter, dataSource]
+      properties:
+        hotelId: { type: integer, format: int64 }
+        hotelName: { type: string }
+        cityCode: { type: string }
+        cityName: { type: string }
+        roomTypeId: { type: integer, format: int64 }
+        roomTypeName: { type: string }
+        ratePlanId: { type: integer, format: int64 }
+        ratePlanName: { type: string }
+        board: { type: string, enum: [RO, BB, HB, FB] }
+        cancellationPolicy: { type: string, enum: [FLEXIBLE, NON_REFUNDABLE] }
+        totalAmount:
+          type: number
+          description: Soma das noites × pax, **líquida** (sem markup do comprador).
+        currency: { type: string, pattern: '^[A-Z]{3}$' }
         updatedAt: { type: string, format: date-time }
         staleAfter: { type: string, format: date-time }
         dataSource: { $ref: '#/components/schemas/DataSource' }
