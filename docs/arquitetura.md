@@ -111,7 +111,7 @@ Um processo, um banco. Sem cache distribuído: o *read model* **é** a tabela.
 | `hotel` | `id`, `name`, `city_code`, `city_name`, `latitude`, `longitude`, `data_source` (`SEED`/`PUSH`), `updated_at` | `(city_code)` |
 | `room_type` | `id`, `hotel_id FK`, `name`, `max_adults`, `max_children`, `capacity` | `FK hotel` |
 | `rate_plan` | `id`, `room_type_id FK`, `name`, `board` (`RO`/`BB`/`HB`/`FB`), `cancellation_policy` | `FK room_type` |
-| `rate` | `hotel_id`, `room_type_id`, `rate_plan_id`, `stay_date`, `adult_amount`, `child_amount`, `currency char(3)`, `updated_at` | `PK(room_type_id, rate_plan_id, stay_date)`; `CHECK (adult_amount >= 0)` |
+| `rate` | `hotel_id`, `room_type_id`, `rate_plan_id`, `stay_date`, `adult_amount`, `child_amount`, `currency char(3)`, `updated_at` — valores **líquidos de atacado** (ver R9) | `PK(room_type_id, rate_plan_id, stay_date)`; `CHECK (adult_amount >= 0)` |
 | `availability` | `room_type_id`, `stay_date`, `allotment`, `stop_sell` | `PK(room_type_id, stay_date)`; `CHECK (allotment >= 0)` |
 | `api_client` | `id`, `name`, `key_hash`, `enabled`, `rate_limit_per_min` | `UNIQUE(key_hash)` |
 | `mapping` *(vazio no v1)* | `entity_type`, `entity_id`, `provider`, `external_id` | `UNIQUE(provider, external_id)` |
@@ -241,6 +241,7 @@ de publicados, mudam só por adição.
 | R6 | `hold` com expiração traz deadlock/corrida | Média | só em MB4, com teste de concorrência como no serviço de reservas |
 | R7 | Contrato publicado sem disciplina de versão | Média | `/v1` + apenas adição compatível; congelar em `docs/broker/` |
 | R8 | Ingestão manual não escala além de ~10 hotéis | Baixa | aceitável no escopo; vira sinal para pull/PMS |
+| R9 | **Tarifa de balcão publicada como atacado** | **Alta** | o contrato diz *net* e o broker não distingue: publicar o preço que o hóspede pagaria no site do hotel faz o comprador vender acima do mercado **sem erro nenhum aparecer** — mesmo `dataSource: PUSH`, mesma cotação válida. Mitigação: exigir líquido de atacado no cadastro e usar a validação do comprador (desvio **positivo** contra o preço público) como detector |
 
 **Já coberto por decisão:** frescor explícito, erro tipado, idempotência de leitura, fronteira de segurança por API key, origem do dado declarada.
 
