@@ -32,6 +32,32 @@ public class SearchRepository {
                     Instant updatedAt, String dataSource) {
     }
 
+    /** Uma linha por noite publicada dos quartos informados. */
+    public record NightRow(long roomTypeId, long ratePlanId, LocalDate date, BigDecimal adult, BigDecimal child) {
+    }
+
+    /** Noites de todos os planos vencedores — uma consulta, filtrando os pares em memoria. */
+    @SuppressWarnings("unchecked")
+    public List<NightRow> nights(final java.util.List<Long> roomTypeIds, final LocalDate checkIn,
+                    final LocalDate checkOut) {
+        if (roomTypeIds.isEmpty()) {
+            return List.of();
+        }
+        final List<Object[]> rows = this.entityManager.createNativeQuery(
+                        "select room_type_id, rate_plan_id, stay_date, adult_amount, child_amount from rate "
+                                        + "where stay_date >= :checkIn and stay_date < :checkOut "
+                                        + "and room_type_id = any(:roomIds) order by stay_date")
+                        .setParameter("roomIds", roomTypeIds.toArray(new Long[0]))
+                        .setParameter("checkIn", checkIn)
+                        .setParameter("checkOut", checkOut)
+                        .getResultList();
+
+        return rows.stream()
+                        .map(row -> new NightRow(((Number) row[0]).longValue(), ((Number) row[1]).longValue(),
+                                        (LocalDate) row[2], (BigDecimal) row[3], (BigDecimal) row[4]))
+                        .toList();
+    }
+
     @SuppressWarnings("unchecked")
     public List<OfferRow> offers(final String cityCode, final LocalDate checkIn, final LocalDate checkOut,
                     final long nights) {

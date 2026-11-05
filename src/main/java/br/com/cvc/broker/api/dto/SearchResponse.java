@@ -16,6 +16,16 @@ public record SearchResponse(String cityCode, LocalDate checkIn, LocalDate check
     public record Hit(Long hotelId, String hotelName, String cityCode, String cityName, Long roomTypeId,
                     String roomTypeName, Long ratePlanId, String ratePlanName, String board,
                     String cancellationPolicy, BigDecimal totalAmount, String currency, Instant updatedAt,
-                    Instant staleAfter, String dataSource) {
+                    Instant staleAfter, String dataSource, List<Night> nights) {
+    }
+
+    /**
+     * Tarifa líquida por noite do plano vencedor.
+     *
+     * <p>Existe para o comprador precificar a busca <b>igual</b> à reserva: aplicar a margem
+     * noite a noite e somar. Aplicar sobre o total do período daria outro número quando a
+     * diária tem dízima — dois preços para o mesmo produto.</p>
+     */
+    public record Night(java.time.LocalDate date, BigDecimal adult, BigDecimal child) {
     }
 }
