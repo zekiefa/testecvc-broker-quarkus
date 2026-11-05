@@ -220,6 +220,10 @@ paths:
                     updatedAt: '2026-11-03T12:00:00Z'
                     staleAfter: '2026-11-03T12:15:00Z'
                     dataSource: SEED
+                    nights:
+                      - { date: '2027-04-10', adult: 900.00, child: 450.00 }
+                      - { date: '2027-04-11', adult: 900.00, child: 450.00 }
+                      - { date: '2027-04-12', adult: 900.00, child: 450.00 }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
@@ -693,6 +697,12 @@ components:
         updatedAt: { type: string, format: date-time }
         staleAfter: { type: string, format: date-time }
         dataSource: { $ref: '#/components/schemas/DataSource' }
+        nights:
+          type: array
+          description: |
+            Tarifa líquida **por noite** do plano vencedor. Existe para o comprador aplicar a
+            margem noite a noite e obter o mesmo número da reserva.
+          items: { $ref: '#/components/schemas/NightRate' }
 
     HotelUpsert:
       type: object

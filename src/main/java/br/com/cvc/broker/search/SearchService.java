@@ -57,14 +57,39 @@ public class SearchService {
                                         Collectors.mapping(row -> toHit(row, adultCount, childCount),
                                                         Collectors.toList())));
 
-        final var hits = byHotel.values().stream()
+        final var winners = byHotel.values().stream()
                         .map(offers -> offers.stream()
                                         .min(Comparator.comparing(SearchResponse.Hit::totalAmount))
                                         .orElseThrow())
                         .sorted(Comparator.comparing(SearchResponse.Hit::totalAmount))
                         .toList();
 
+        if (winners.isEmpty()) {
+            return new SearchResponse(cityCode, checkIn, checkOut, adults, children, List.of());
+        }
+
+        final var roomIds = winners.stream().map(SearchResponse.Hit::roomTypeId).distinct().toList();
+        final Map<String, List<SearchResponse.Night>> nightsByPlan = this.repository
+                        .nights(roomIds, checkIn, checkOut).stream()
+                        .collect(Collectors.groupingBy(night -> night.roomTypeId() + ":" + night.ratePlanId(),
+                                        Collectors.mapping(night -> new SearchResponse.Night(night.date(),
+                                                        night.adult(), night.child()), Collectors.toList())));
+
+        final var hits = winners.stream()
+                        .map(hit -> withNights(hit, nightsByPlan.getOrDefault(hit.roomTypeId() + ":" + hit.ratePlanId(),
+                                        List.of())))
+                        .filter(hit -> hit.nights().size() == nights)
+                        .toList();
+
         return new SearchResponse(cityCode, checkIn, checkOut, adults, children, hits);
+    }
+
+    private static SearchResponse.Hit withNights(final SearchResponse.Hit hit,
+                    final List<SearchResponse.Night> nights) {
+        return new SearchResponse.Hit(hit.hotelId(), hit.hotelName(), hit.cityCode(), hit.cityName(),
+                        hit.roomTypeId(), hit.roomTypeName(), hit.ratePlanId(), hit.ratePlanName(), hit.board(),
+                        hit.cancellationPolicy(), hit.totalAmount(), hit.currency(), hit.updatedAt(),
+                        hit.staleAfter(), hit.dataSource(), nights);
     }
 
     private SearchResponse.Hit toHit(final SearchRepository.OfferRow row, final BigDecimal adults,
@@ -76,7 +101,8 @@ public class SearchService {
         return new SearchResponse.Hit(row.hotelId(), row.hotelName(), row.cityCode(), row.cityName(),
                         row.roomTypeId(), row.roomTypeName(), row.ratePlanId(), row.ratePlanName(), row.board(),
                         row.cancellationPolicy(), total, row.currency(), row.updatedAt(),
-                        row.updatedAt().plus(Duration.ofMinutes(this.freshnessMinutes)), row.dataSource());
+                        row.updatedAt().plus(Duration.ofMinutes(this.freshnessMinutes)), row.dataSource(),
+                        List.of());
     }
 
     /** Exposto para o contrato: instante de referência quando não há oferta. */

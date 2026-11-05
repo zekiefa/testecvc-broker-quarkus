@@ -33,6 +33,12 @@ class SearchTest {
         assertEquals(sorted, prices, "resultado deve vir do mais barato ao mais caro");
 
         assertTrue(response.items().stream().allMatch(hit -> "SEED".equals(hit.dataSource())));
+
+        // as noites do plano vencedor vem junto: o comprador precifica igual a reserva
+        assertTrue(response.items().stream().allMatch(hit -> hit.nights().size() == 3),
+                        "cada item deve trazer as 3 noites do periodo");
+        assertTrue(response.items().stream().flatMap(hit -> hit.nights().stream())
+                        .allMatch(night -> night.adult().compareTo(BigDecimal.ZERO) > 0));
     }
 
     @Test
