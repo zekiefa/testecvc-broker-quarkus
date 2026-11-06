@@ -10,6 +10,9 @@ import io.quarkus.panache.common.Sort;
 @ApplicationScoped
 public class CatalogueRepository {
 
+    /** Teto de página: acima disso a resposta vira payload sem uso. */
+    private static final int MAX_PAGE_SIZE = 100;
+
     public List<Hotel> hotels(final String cityCode, final int limit, final int offset) {
         // range() e offset/limite; page() seria indice de pagina. Ordenacao fixa para a
         // paginacao ser estavel entre chamadas.
@@ -18,7 +21,7 @@ public class CatalogueRepository {
                         ? Hotel.findAll(sort)
                         : Hotel.find("cityCode", sort, cityCode);
 
-        final int safeLimit = Math.max(limit, 1);
+        final int safeLimit = Math.clamp(limit, 1, MAX_PAGE_SIZE);
         return query.range(offset, offset + safeLimit - 1).list();
     }
 

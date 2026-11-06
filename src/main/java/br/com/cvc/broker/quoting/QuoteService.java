@@ -82,7 +82,7 @@ public class QuoteService {
                         .orElse(Instant.now());
 
         return new QuoteResponse(hotel.id, room.id, plan.id, request.checkIn(), request.checkOut(),
-                        request.adults(), request.children(), rows.get(0).currency(), total,
+                        request.adults(), request.children(), rows.getFirst().currency(), total,
                         rows.stream().map(row -> new QuoteResponse.Night(row.date(), row.adult(), row.child())).toList(),
                         updatedAt, updatedAt.plus(Duration.ofMinutes(this.freshnessMinutes)), hotel.dataSource);
     }

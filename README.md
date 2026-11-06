@@ -9,7 +9,7 @@ Repositório irmão: [testecvc-quarkus](https://github.com/zekiefa/testecvc-quar
 |---|---|
 | Estado | **contrato (OpenAPI) escrito**; sem código ainda |
 | Escopo v1 | feed de catálogo/tarifas/disponibilidade (não vende, não reserva) |
-| Stack prevista | Java 21 · Quarkus · PostgreSQL · Flyway |
+| Stack | Java **25** (LTS) · Quarkus 3.40 · PostgreSQL 16 · Flyway |
 | Contrato | [`openapi/broker-v1.yaml`](openapi/broker-v1.yaml) |
 | Arquitetura | [`docs/arquitetura.md`](docs/arquitetura.md) |
 
