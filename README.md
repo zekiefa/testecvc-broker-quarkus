@@ -48,6 +48,12 @@ npx --yes @redocly/cli lint openapi/broker-v1.yaml
 | **MB3** | integração com o serviço de reservas (substituir a fixture) |
 | **MB4** | alocador (`hold`/`bookings`) — só com sinal |
 
+## Documentação
+
+- **[Capacidades para agentes de IA](docs/ai/capabilities.md)** — features de negócio, invariantes
+  numeradas, contrato e fronteira de dados, em formato compacto (leia antes de varrer o código)
+- [Arquitetura](docs/arquitetura.md) · [Contrato OpenAPI](openapi/broker-v1.yaml)
+
 ## Como este repositório é gerenciado
 
 - **Tracker:** as tarefas deste projeto vivem no Beads do repositório irmão

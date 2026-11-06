@@ -71,6 +71,8 @@ Campos de `BRK-04`: `hotelId`, `roomTypeId`, `ratePlanId`, `checkIn`, `checkOut`
 - **Fonte única**: `openapi/broker-v1.yaml` — o build copia para `META-INF` e o serviço serve **esse arquivo** em `/q/openapi` (scan de anotações desligado). Documento e implementação não divergem.
 - **Versionamento**: `/v1` evolui só por adição compatível.
 
+> Documento equivalente do comprador: <https://github.com/zekiefa/testecvc-quarkus/blob/main/docs/ai/capabilities.md>
+
 ## Erros que o comprador pode receber
 
 | `type` | HTTP | Quando |
