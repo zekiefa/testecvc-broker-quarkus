@@ -24,5 +24,6 @@ broker:
   # As chaves vivem em api_client (hash SHA-256), semeadas em V4 para desenvolvimento.
   rates:
     # A partir daqui o comprador deve considerar o dado vencido.
-    freshness-minutes: 15
-    max-nights: 30
+    freshness-minutes: ${BROKER_FRESHNESS_MINUTES:15}
+    # Período máximo de uma cotação, em noites. Fonte única: cotação e busca leem daqui.
+    max-nights: ${BROKER_MAX_NIGHTS:30}

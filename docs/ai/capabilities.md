@@ -59,7 +59,7 @@ Campos de `BRK-04`: `hotelId`, `roomTypeId`, `ratePlanId`, `checkIn`, `checkOut`
 | B-04 | **Origem declarada**: `dataSource ∈ {SEED, PUSH}` em toda resposta de preço | — |
 | B-05 | Valores são **líquidos**; a remuneração do comprador não entra | — |
 | B-06 | Capacidade do quarto é **limite do vendedor**: `adults > maxAdults` → `400 guest-limit-exceeded` | — |
-| B-07 | Período máximo `broker.rates.max-nights` (30); faixa invertida → `400 invalid-period` | — |
+| B-07 | Período máximo `broker.rates.max-nights` (**padrão 30**, ambiente `BROKER_MAX_NIGHTS`); faixa invertida → `400 invalid-period` | — |
 | B-08 | **Noite não publicada** retorna `allotment: 0` + `stopSell: true` — silêncio não é estoque | — |
 | B-09 | `minAllotment` = piso do período (o que pode ser vendido para **todas** as noites) | — |
 | B-10 | Escopo vem do cadastro, nunca do header; ausente/inválida → `401`; sem escopo → `403 insufficient-scope` | — |
