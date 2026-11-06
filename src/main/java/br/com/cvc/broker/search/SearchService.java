@@ -31,7 +31,7 @@ public class SearchService {
 
     public SearchService(final SearchRepository repository,
                     @ConfigProperty(name = "broker.rates.freshness-minutes", defaultValue = "15") final int freshnessMinutes,
-                    @ConfigProperty(name = "broker.rates.max-nights", defaultValue = "30") final int maxNights) {
+                    @ConfigProperty(name = "broker.rates.max-nights") final int maxNights) {
         this.repository = repository;
         this.freshnessMinutes = freshnessMinutes;
         this.maxNights = maxNights;
