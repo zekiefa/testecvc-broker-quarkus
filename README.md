@@ -54,6 +54,64 @@ npx --yes @redocly/cli lint openapi/broker-v1.yaml
   numeradas, contrato e fronteira de dados, em formato compacto (leia antes de varrer o código)
 - [Arquitetura](docs/arquitetura.md) · [Contrato OpenAPI](openapi/broker-v1.yaml)
 
+## Endpoints
+
+Autenticação: header **`X-Api-Key`**. Em desenvolvimento: `read-key-dev` (escopo `read`) e
+`admin-key-dev` (`read,admin`). O escopo exigido é derivado do caminho: `/admin/**` → `admin`;
+o resto → `read`. Chave ausente ou inválida → `401`; escopo insuficiente → `403`.
+
+Os IDs correspondem a [`docs/ai/capabilities.md`](docs/ai/capabilities.md).
+
+### Comprador (escopo `read`)
+
+| ID | Método | Caminho | Entrada | Sucesso | Erros |
+|---|---|---|---|---|---|
+| `BRK-01` | `GET` | `/v1/search` | `cityCode`, `checkIn`, `checkOut`, `adults`, `children` | `200` uma oferta **por hotel**: plano mais barato, total líquido, **noites detalhadas**, `dataSource`, `staleAfter` | `400` período/parâmetro · `401` |
+| `BRK-02` | `GET` | `/v1/hotels` | `cityCode`, `limit`, `offset` | `200` página de hotéis (`items`, `page`) | `400` · `401` |
+| `BRK-03` | `GET` | `/v1/hotels/{hotelId}` | path | `200` quartos e regimes (catálogo, **sem preço**) | `404` · `401` |
+| `BRK-04` | `POST` | `/v1/quotes` | `{hotelId, roomTypeId, ratePlanId, checkIn, checkOut, adults, children}` | `200` total **líquido** + noites + `updatedAt`/`staleAfter` + `dataSource` | `400` período/validação/pax · `404` hotel/quarto/plano · `409` `incomplete-rate-period` (com `missingDates`) · `401` |
+| `BRK-05` | `GET` | `/v1/availability` | `roomTypeId`, `checkIn`, `checkOut` | `200` allotment por noite + `minAllotment` + frescor | `400` · `404` · `401` |
+
+### Fornecedor (escopo `admin`)
+
+| ID | Método | Caminho | Entrada | Sucesso | Erros |
+|---|---|---|---|---|---|
+| `BRK-06` | `PUT` | `/admin/hotels/{hotelId}` | `{name, cityCode, cityName, roomTypes[]{id, name, maxAdults, maxChildren, ratePlans[]}}` | `200` hotel publicado; marca `dataSource: PUSH` | `400` · `403` · `401` |
+| `BRK-07` | `PUT` | `/admin/rooms/{roomTypeId}/rates` | `{ratePlanId, currency, from, to, adultAmount, childAmount}` (intervalo **inclusive**) | `204` tarifas publicadas; renova `updated_at` | `400` faixa invertida · `403` · `404` quarto/plano · `401` |
+| `BRK-08` | `PUT` | `/admin/rooms/{roomTypeId}/availability` | `{from, to, allotment, stopSell}` | `204` disponibilidade publicada | `400` · `403` · `404` · `401` |
+
+### Operação
+
+| ID | Método | Caminho | Sucesso |
+|---|---|---|---|
+| — | `GET` | `/q/openapi` | `200` — serve o **próprio** `openapi/broker-v1.yaml` |
+| — | `GET` | `/q/health` | `200` saúde (inclui datasource) |
+| — | `GET` | `/q/metrics` | `200` métricas Prometheus |
+
+Corpo de erro: `application/problem+json` (RFC 7807) com `type` estável e `traceId`.
+Tipos: `hotel-not-found`, `room-not-found`, `rate-plan-not-found`, `invalid-period`,
+`guest-limit-exceeded`, `validation-failed`, `incomplete-rate-period`, `unauthorized`,
+`insufficient-scope`.
+
+> `429 rate-limited` está **descrito no contrato** mas ainda não é aplicado: a coluna
+> `api_client.rate_limit_per_min` existe, a régua não. Ver "Não-objetivos" em
+> [`docs/ai/capabilities.md`](docs/ai/capabilities.md).
+
+### Exemplo
+
+```shell
+# publicar tarifa (admin) e cotar (buyer)
+curl -s -X PUT localhost:8081/admin/rooms/1/rates -H 'X-Api-Key: admin-key-dev' \
+  -H 'Content-Type: application/json' \
+  -d '{"ratePlanId":1,"currency":"BRL","from":"2027-04-10","to":"2027-04-12",
+       "adultAmount":900.00,"childAmount":450.00}'
+
+curl -s -X POST localhost:8081/v1/quotes -H 'X-Api-Key: read-key-dev' \
+  -H 'Content-Type: application/json' \
+  -d '{"hotelId":1,"roomTypeId":1,"ratePlanId":1,
+       "checkIn":"2027-04-10","checkOut":"2027-04-13","adults":1,"children":1}' | jq
+```
+
 ## Como este repositório é gerenciado
 
 - **Tracker:** as tarefas deste projeto vivem no Beads do repositório irmão
