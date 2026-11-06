@@ -1,7 +1,6 @@
 package br.com.cvc.broker.web;
 
 import java.util.Locale;
-import java.util.Set;
 
 import br.com.cvc.broker.identity.ApiKeyRegistry;
 import br.com.cvc.broker.exceptions.ProblemDetail;
