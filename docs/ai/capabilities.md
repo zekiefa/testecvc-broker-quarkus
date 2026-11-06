@@ -3,7 +3,7 @@ project: testecvc-broker-quarkus
 role: broker-feed               # lado do fornecedor (B2B)
 doc_version: 1
 updated: 2026-11-06
-stack: Java 21 · Quarkus 3.40 · PostgreSQL 16 · Flyway
+stack: Java 25 · Quarkus 3.40 · PostgreSQL 16 · Flyway
 depends_on: []                  # não depende de nenhum outro serviço
 consumed_by:
   - project: testecvc-quarkus

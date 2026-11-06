@@ -45,21 +45,21 @@ public class IngestionRepository {
         final var result = this.entityManager.createNativeQuery("select id from hotel where id = :id")
                         .setParameter("id", id)
                         .getResultList();
-        return result.isEmpty() ? null : ((Number) result.get(0)).longValue();
+        return result.isEmpty() ? null : ((Number) result.getFirst()).longValue();
     }
 
     public Long findRoomHotelId(final long id) {
         final var result = this.entityManager.createNativeQuery("select hotel_id from room_type where id = :id")
                         .setParameter("id", id)
                         .getResultList();
-        return result.isEmpty() ? null : ((Number) result.get(0)).longValue();
+        return result.isEmpty() ? null : ((Number) result.getFirst()).longValue();
     }
 
     public Long findPlanRoomId(final long id) {
         final var result = this.entityManager.createNativeQuery("select room_type_id from rate_plan where id = :id")
                         .setParameter("id", id)
                         .getResultList();
-        return result.isEmpty() ? null : ((Number) result.get(0)).longValue();
+        return result.isEmpty() ? null : ((Number) result.getFirst()).longValue();
     }
 
     public void upsertRoom(final long id, final long hotelId, final String name, final int maxAdults,
