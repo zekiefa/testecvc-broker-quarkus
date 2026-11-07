@@ -206,4 +206,45 @@
       </plugin>
     </plugins>
   </build>
+  <profiles>
+    <profile>
+      <id>mutation</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.pitest</groupId>
+            <artifactId>pitest-maven</artifactId>
+            <version>1.30.2</version>
+            <dependencies>
+              <dependency>
+                <groupId>org.pitest</groupId>
+                <artifactId>pitest-junit5-plugin</artifactId>
+                <version>1.2.3</version>
+              </dependency>
+            </dependencies>
+            <configuration>
+              <targetClasses>
+                <param>br.com.cvc.broker.quoting.Quoting</param>
+              </targetClasses>
+              <targetTests>
+                <param>br.com.cvc.broker.quoting.QuotingTest</param>
+              </targetTests>
+              <outputFormats>
+                <outputFormat>HTML</outputFormat>
+                <outputFormat>XML</outputFormat>
+              </outputFormats>
+              <timestampedReports>false</timestampedReports>
+              <failWhenNoMutations>true</failWhenNoMutations>
+              <!-- 100% de mutantes mortos: a superfície pura é uma conta só.
+                   70 de cobertura porque as 2 linhas restantes são o construtor privado
+                   da classe utilitária, que nenhum teste alcança por desenho. -->
+              <mutationThreshold>100</mutationThreshold>
+              <coverageThreshold>70</coverageThreshold>
+              <threads>1</threads>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

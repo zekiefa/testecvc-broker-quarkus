@@ -48,6 +48,19 @@ npx --yes @redocly/cli lint openapi/broker-v1.yaml
 | **MB3** | integração com o serviço de reservas (substituir a fixture) |
 | **MB4** | alocador (`hold`/`bookings`) — só com sinal |
 
+## Testes mutantes
+
+PIT sobre `Quoting` — a soma de diárias é o **único ponto realmente puro** deste serviço;
+o resto depende de banco e de HTTP, e mutar isso mede o container, não a aritmética.
+
+```shell
+mvn -Pmutation -Djacoco.skip=true test-compile pitest:mutationCoverage
+```
+
+Limiares: **100% de mutantes mortos** e 70% de cobertura (as 2 linhas restantes são o
+construtor privado da classe utilitária). Roda em [`mutation.yml`](.github/workflows/mutation.yml),
+manual e semanal.
+
 ## Documentação
 
 - **[Capacidades para agentes de IA](docs/ai/capabilities.md)** — features de negócio, invariantes
