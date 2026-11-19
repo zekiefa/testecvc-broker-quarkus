@@ -31,8 +31,6 @@ public class ApiClient extends PanacheEntityBase {
 
     public boolean enabled;
 
-    @Column(name = "rate_limit_per_min")
-    public int rateLimitPerMin;
 
     @Column(name = "created_at")
     public Instant createdAt;

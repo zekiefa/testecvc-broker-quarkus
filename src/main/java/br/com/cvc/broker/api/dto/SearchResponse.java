@@ -16,7 +16,7 @@ public record SearchResponse(String cityCode, LocalDate checkIn, LocalDate check
     public record Hit(Long hotelId, String hotelName, String cityCode, String cityName, Long roomTypeId,
                     String roomTypeName, Long ratePlanId, String ratePlanName, String board,
                     String cancellationPolicy, BigDecimal totalAmount, String currency, Instant updatedAt,
-                    Instant staleAfter, String dataSource, List<Night> nights) {
+                    Instant staleAfter, String dataSource, List<NightRate> nights) {
     }
 
     /**
