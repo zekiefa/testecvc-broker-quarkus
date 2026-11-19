@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import br.com.cvc.broker.api.dto.NightRate;
 import br.com.cvc.broker.api.dto.SearchResponse;
 import br.com.cvc.broker.exceptions.BrokerException;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -69,10 +70,10 @@ public class SearchService {
         }
 
         final var roomIds = winners.stream().map(SearchResponse.Hit::roomTypeId).distinct().toList();
-        final Map<String, List<SearchResponse.Night>> nightsByPlan = this.repository
+        final Map<String, List<NightRate>> nightsByPlan = this.repository
                         .nights(roomIds, checkIn, checkOut).stream()
                         .collect(Collectors.groupingBy(night -> night.roomTypeId() + ":" + night.ratePlanId(),
-                                        Collectors.mapping(night -> new SearchResponse.Night(night.date(),
+                                        Collectors.mapping(night -> new NightRate(night.date(),
                                                         night.adult(), night.child()), Collectors.toList())));
 
         final var hits = winners.stream()
@@ -85,7 +86,7 @@ public class SearchService {
     }
 
     private static SearchResponse.Hit withNights(final SearchResponse.Hit hit,
-                    final List<SearchResponse.Night> nights) {
+                    final List<NightRate> nights) {
         return new SearchResponse.Hit(hit.hotelId(), hit.hotelName(), hit.cityCode(), hit.cityName(),
                         hit.roomTypeId(), hit.roomTypeName(), hit.ratePlanId(), hit.ratePlanName(), hit.board(),
                         hit.cancellationPolicy(), hit.totalAmount(), hit.currency(), hit.updatedAt(),
@@ -105,8 +106,4 @@ public class SearchService {
                         List.of());
     }
 
-    /** Exposto para o contrato: instante de referência quando não há oferta. */
-    public Instant now() {
-        return Instant.now();
-    }
 }
